@@ -1,6 +1,10 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import FilterBottomSheet from "@/src/components/filter/FilterBottomSheet";
-import React, { useRef, useState } from "react";
+import MonthYearPicker from "@/src/components/MonthYearPicker";
+import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  FlatList,
   ScrollView,
   StatusBar,
   Text,
@@ -8,6 +12,51 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// ─────────────────────────────────────────────
+// DATE UTILS
+// ─────────────────────────────────────────────
+
+const DAY_NAMES = ["Su", "M", "Tu", "W", "Th", "F", "Sa"];
+
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+const DAY_ITEM_WIDTH = 48;
+
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getDate() === b.getDate() &&
+    a.getMonth() === b.getMonth() &&
+    a.getFullYear() === b.getFullYear()
+  );
+}
+
+// Returns all days in the given month/year
+function getDaysInMonth(month: number, year: number): Date[] {
+  const totalDays = new Date(year, month + 1, 0).getDate(); // day 0 of next month = last day of this month
+  return Array.from({ length: totalDays }, (_, i) => {
+    const d = new Date(year, month, i + 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+}
+
+// ─────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────
 
 type Match = {
   id: string;
@@ -21,8 +70,10 @@ type Match = {
   isLive?: boolean;
 };
 
+type FilterBottomSheetRef = { open: () => void; close: () => void };
+
 // ─────────────────────────────────────────────
-// CONSTANTS / MOCK DATA
+// MOCK DATA
 // ─────────────────────────────────────────────
 
 const MATCHES: Match[] = [
@@ -80,17 +131,8 @@ const MATCHES: Match[] = [
     awayTeam: "Leicester FC",
   },
 ];
-const SPORT_FILTERS = ["All", "Australian Rules", "Rugby League"];
 
-const DAYS = [
-  { day: "Su", date: 19 },
-  { day: "M", date: 20 },
-  { day: "Tu", date: 21 },
-  { day: "W", date: 22 },
-  { day: "Th", date: 23 },
-  { day: "F", date: 24 },
-  { day: "Sa", date: 25 },
-];
+const SPORT_FILTERS = ["All", "Australian Rules", "Rugby League"];
 
 const LEAGUE_COLORS: Record<string, string> = {
   NBA: "#C8102E",
@@ -102,7 +144,7 @@ const LEAGUE_COLORS: Record<string, string> = {
 };
 
 // ─────────────────────────────────────────────
-// SMALL COMPONENTS
+// TEAM AVATAR
 // ─────────────────────────────────────────────
 
 const TeamAvatar = ({ name }: { name: string }) => {
@@ -120,29 +162,6 @@ const TeamAvatar = ({ name }: { name: string }) => {
   );
 };
 
-const Checkbox = ({
-  checked,
-  onPress,
-  green = false,
-}: {
-  checked: boolean;
-  onPress: () => void;
-  green?: boolean;
-}) => (
-  <TouchableOpacity
-    onPress={onPress}
-    className={`w-6 h-6 rounded-md items-center justify-center border-2 ${
-      checked
-        ? green
-          ? "bg-green-500 border-green-500"
-          : "bg-blue-600 border-blue-600"
-        : "border-gray-300 bg-white"
-    }`}
-  >
-    {checked && <Text className="text-white text-xs font-bold">✓</Text>}
-  </TouchableOpacity>
-);
-
 // ─────────────────────────────────────────────
 // MATCH CARD
 // ─────────────────────────────────────────────
@@ -152,7 +171,6 @@ const MatchCard = ({ match }: { match: Match }) => {
 
   return (
     <View className="bg-white mx-4 mb-3 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      {/* League label */}
       <View className="pt-3 pb-1 items-center">
         <Text
           className="text-xs font-bold tracking-widest uppercase"
@@ -162,12 +180,10 @@ const MatchCard = ({ match }: { match: Match }) => {
         </Text>
       </View>
 
-      {/* Time */}
       <Text className="text-center text-2xl font-bold text-gray-900">
         {match.time}
       </Text>
 
-      {/* Live / odds / tips */}
       <View className="items-center mb-1" style={{ gap: 2 }}>
         {match.isLive && match.timeAgo ? (
           <View className="flex-row items-center" style={{ gap: 4 }}>
@@ -187,7 +203,6 @@ const MatchCard = ({ match }: { match: Match }) => {
         ) : null}
       </View>
 
-      {/* Teams */}
       <View className="flex-row items-center justify-between px-6 pb-4 pt-2">
         <View className="items-center flex-1">
           <TeamAvatar name={match.homeTeam} />
@@ -216,23 +231,51 @@ const MatchCard = ({ match }: { match: Match }) => {
 };
 
 // ─────────────────────────────────────────────
-// FILTER BOTTOM SHEET — CATEGORY ROW
-// ─────────────────────────────────────────────
-
-// ─────────────────────────────────────────────
-// FILTER BOTTOM SHEET
-// ─────────────────────────────────────────────
-
-type FilterBottomSheetRef = { open: () => void; close: () => void };
-
-// ─────────────────────────────────────────────
 // MAIN SCREEN
 // ─────────────────────────────────────────────
 
+const INITIAL_DATE = new Date();
+
 export default function SportsScheduleScreen() {
-  const [selectedDay, setSelectedDay] = useState(22);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const [selectedDate, setSelectedDate] = useState<Date>(INITIAL_DATE);
+  const [pickerVisible, setPickerVisible] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("All");
   const filterSheetRef = useRef<FilterBottomSheetRef>(null);
+  const dateListRef = useRef<FlatList>(null);
+
+  // Only days of the currently selected month
+  const monthDates = getDaysInMonth(
+    selectedDate.getMonth(),
+    selectedDate.getFullYear(),
+  );
+
+  // Scroll to selected date whenever it changes
+  useEffect(() => {
+    const index = monthDates.findIndex((d) => isSameDay(d, selectedDate));
+    if (index !== -1) {
+      setTimeout(() => {
+        dateListRef.current?.scrollToIndex({
+          index,
+          animated: true,
+          viewPosition: 0.5,
+        });
+      }, 80);
+    }
+  }, [selectedDate]);
+
+  // When month/year picker confirms — jump to 1st of that month
+  const handlePickerConfirm = (month: number, year: number) => {
+    const newDate = new Date(year, month, 1);
+    setSelectedDate(newDate);
+    setPickerVisible(false);
+  };
+
+  const handleDayPress = (date: Date) => {
+    setSelectedDate(date);
+  };
 
   return (
     <View className="flex-1">
@@ -240,47 +283,73 @@ export default function SportsScheduleScreen() {
         <StatusBar barStyle="dark-content" />
 
         <View className="px-4 pt-4 pb-2">
-          {/* Month Header */}
+          {/* Month / Year Header */}
           <TouchableOpacity
+            onPress={() => setPickerVisible(true)}
             className="flex-row items-center justify-center mb-4"
             style={{ gap: 4 }}
           >
             <Text className="text-lg font-semibold text-gray-900">
-              January 2025
+              {MONTH_NAMES[selectedDate.getMonth()]}{" "}
+              {selectedDate.getFullYear()}
             </Text>
-            <Text className="text-gray-400 text-sm">▾</Text>
+            <Text className="text-slate-600 text-2xl mb-1">▾</Text>
           </TouchableOpacity>
 
-          {/* Day Selector */}
-          <View className="flex-row justify-between mb-4">
-            {DAYS.map(({ day, date }) => {
-              const isSelected = date === selectedDay;
+          {/* Date Strip — only days of selected month */}
+          <FlatList
+            ref={dateListRef}
+            data={monthDates}
+            horizontal
+            keyExtractor={(item) => item.toISOString()}
+            showsHorizontalScrollIndicator={false}
+            getItemLayout={(_, index) => ({
+              length: DAY_ITEM_WIDTH,
+              offset: DAY_ITEM_WIDTH * index,
+              index,
+            })}
+            onScrollToIndexFailed={(info) => {
+              setTimeout(() => {
+                dateListRef.current?.scrollToIndex({
+                  index: info.index,
+                  animated: true,
+                  viewPosition: 0.5,
+                });
+              }, 300);
+            }}
+            renderItem={({ item: date }) => {
+              const isSelected = isSameDay(date, selectedDate);
+              const isToday = isSameDay(date, today);
               return (
                 <TouchableOpacity
-                  key={date}
-                  onPress={() => setSelectedDay(date)}
-                  className={`items-center w-10 py-1.5 rounded-full ${
-                    isSelected ? "bg-blue-600" : ""
-                  }`}
+                  onPress={() => handleDayPress(date)}
+                  style={{ width: DAY_ITEM_WIDTH }}
+                  className={`items-center py-1.5 rounded-full `}
+                  activeOpacity={0.8}
                 >
-                  <Text
-                    className={`text-xs mb-0.5 ${
-                      isSelected ? "text-blue-200" : "text-gray-400"
-                    }`}
-                  >
-                    {day}
+                  <Text className={`text-xs mb-0.5 text-black/80`}>
+                    {DAY_NAMES[date.getDay()]}
                   </Text>
-                  <Text
-                    className={`text-sm font-semibold ${
-                      isSelected ? "text-white" : "text-gray-800"
-                    }`}
+                  <View
+                    className={`w-7 h-7 flex-row items-center justify-center ${isSelected ? "bg-blue-600" : "bg-white"}  rounded-full`}
                   >
-                    {date}
-                  </Text>
+                    <Text
+                      className={`text-sm font-semibold ${
+                        isSelected
+                          ? "text-white"
+                          : isToday
+                            ? "text-blue-500"
+                            : "text-gray-800"
+                      }`}
+                    >
+                      {date.getDate()}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               );
-            })}
-          </View>
+            }}
+            contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: 16 }}
+          />
 
           {/* Filter Pills */}
           <ScrollView
@@ -288,14 +357,13 @@ export default function SportsScheduleScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: 8, paddingBottom: 8 }}
           >
-            {/* Filters button — opens bottom sheet */}
             <TouchableOpacity
               onPress={() => filterSheetRef.current?.open()}
               className="flex-row items-center bg-gray-200 rounded-full px-3 py-1.5"
               style={{ gap: 4 }}
             >
               <Text className="text-sm text-gray-700">Filters</Text>
-              <Text className="text-gray-500">⚙</Text>
+              <FontAwesome6 name="sliders" size={10} color="#4B5563" />
             </TouchableOpacity>
 
             {SPORT_FILTERS.map((filter) => {
@@ -334,10 +402,19 @@ export default function SportsScheduleScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      {/* Filter Bottom Sheet — outside SafeAreaView so it overlays everything */}
+      {/* Filter Bottom Sheet */}
       <FilterBottomSheet
         ref={filterSheetRef}
         onApply={(selected: any) => console.log("Filters applied:", selected)}
+      />
+
+      {/* Month / Year Picker */}
+      <MonthYearPicker
+        visible={pickerVisible}
+        selectedMonth={selectedDate.getMonth()}
+        selectedYear={selectedDate.getFullYear()}
+        onConfirm={handlePickerConfirm}
+        onCancel={() => setPickerVisible(false)}
       />
     </View>
   );
