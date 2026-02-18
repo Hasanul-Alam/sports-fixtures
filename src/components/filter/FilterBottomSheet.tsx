@@ -1,3 +1,10 @@
+import {
+  fetchSportsFilters,
+  resetSelections,
+  toggleExpand,
+  toggleTournament,
+} from "@/src/features/filter/filterSlice";
+import { AppDispatch, RootState } from "@/src/store/store";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
@@ -17,21 +24,6 @@ import {
   View,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
-
-// import {
-//   fetchSportsFilters,
-//   toggleExpand,
-//   toggleTournament,
-//   resetSelections,
-// } from "@/src/store/filterSlice";
-// import { RootState, AppDispatch } from "@/src/store";
-import {
-  fetchSportsFilters,
-  resetSelections,
-  toggleExpand,
-  toggleTournament,
-} from "@/src/features/filter/filterSlice";
-import { AppDispatch, RootState } from "@/src/store/store";
 import CategoryRow from "./categoryRow";
 
 export interface FilterBottomSheetRef {
@@ -51,7 +43,6 @@ const FilterBottomSheet = forwardRef<FilterBottomSheetRef, Props>(
     const dispatch = useDispatch<AppDispatch>();
 
     const { sports, loading } = useSelector((state: RootState) => state.filter);
-
     useImperativeHandle(ref, () => ({
       open: () => {
         bottomSheetRef.current?.expand();

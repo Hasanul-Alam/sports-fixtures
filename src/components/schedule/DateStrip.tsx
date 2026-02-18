@@ -1,51 +1,41 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { DAY_ITEM_WIDTH, DAY_NAMES } from "@/src/constants/calendarConstants";
+import { setSelectedDate } from "@/src/features/date/dateSlice";
+import {
+  fromDateString,
+  getDaysInMonth,
+  isSameDay,
+  toDateString,
+} from "@/src/utils/dateUtils";
 import React, { useEffect, useRef } from "react";
 import { FlatList, Text, TouchableOpacity, View } from "react-native";
-
-// ─────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────
-
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getDate() === b.getDate() &&
-    a.getMonth() === b.getMonth() &&
-    a.getFullYear() === b.getFullYear()
-  );
-}
-
-export function getDaysInMonth(month: number, year: number): Date[] {
-  const totalDays = new Date(year, month + 1, 0).getDate();
-  return Array.from({ length: totalDays }, (_, i) => {
-    const d = new Date(year, month, i + 1);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
-}
-
-// ─────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────
+import { useDispatch, useSelector } from "react-redux";
 
 type Props = {
-  selectedDate: Date;
-  onDayPress: (date: Date) => void;
+  viewingMonth: number;
+  viewingYear: number;
 };
 
-const DateStrip = ({ selectedDate, onDayPress }: Props) => {
+const DateStrip = ({ viewingMonth, viewingYear }: Props) => {
+  const dispatch = useDispatch();
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const listRef = useRef<FlatList>(null);
-  const monthDates = getDaysInMonth(
-    selectedDate.getMonth(),
-    selectedDate.getFullYear(),
-  );
+  const selectedDateStr = useSelector((state: any) => state.date.selectedDate);
+  const selectedDate = selectedDateStr ? fromDateString(selectedDateStr) : null;
 
-  // Auto-scroll to the selected date whenever it changes
+  const listRef = useRef<FlatList>(null);
+  const monthDates = getDaysInMonth(viewingMonth, viewingYear);
+
+  const handleDayPress = (date: Date) => {
+    dispatch(setSelectedDate(toDateString(date)));
+  };
+
+  // Auto-scroll to selected date or today when month/year changes
   useEffect(() => {
-    const index = monthDates.findIndex((d) => isSameDay(d, selectedDate));
+    const targetDate = selectedDate ?? today;
+    const index = monthDates.findIndex((d) => isSameDay(d, targetDate));
     if (index === -1) return;
     setTimeout(() => {
       listRef.current?.scrollToIndex({
@@ -54,7 +44,7 @@ const DateStrip = ({ selectedDate, onDayPress }: Props) => {
         viewPosition: 0.5,
       });
     }, 80);
-  }, [selectedDate]);
+  }, [selectedDateStr, viewingMonth, viewingYear]);
 
   return (
     <FlatList
@@ -78,12 +68,12 @@ const DateStrip = ({ selectedDate, onDayPress }: Props) => {
         }, 300);
       }}
       renderItem={({ item: date }) => {
-        const isSelected = isSameDay(date, selectedDate);
+        const isSelected = selectedDate ? isSameDay(date, selectedDate) : false;
         const isToday = isSameDay(date, today);
 
         return (
           <TouchableOpacity
-            onPress={() => onDayPress(date)}
+            onPress={() => handleDayPress(date)}
             style={{ width: DAY_ITEM_WIDTH }}
             className="items-center py-1.5 rounded-full"
             activeOpacity={0.8}
@@ -99,9 +89,9 @@ const DateStrip = ({ selectedDate, onDayPress }: Props) => {
               <Text
                 className={`text-sm font-semibold ${
                   isSelected
-                    ? "text-white"
+                    ? "text-white" // selected → white text on blue bg
                     : isToday
-                      ? "text-blue-500"
+                      ? "text-blue-500" // today unselected → blue text, white bg
                       : "text-gray-800"
                 }`}
               >

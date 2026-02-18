@@ -15,4 +15,6 @@ export interface FilterState {
   sports: SportCategory[];
   loading: boolean;
   error: string | null;
+  selectedTournamentIds: number[];
+  selectedSportsNames: string[];
 }

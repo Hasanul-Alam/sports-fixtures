@@ -6,11 +6,10 @@ const initialState: FilterState = {
   sports: [],
   loading: false,
   error: null,
+  selectedTournamentIds: [],
+  selectedSportsNames: [],
 };
 
-/**
- * Fetch sports and leagues thunk for filter.
- */
 export const fetchSportsFilters = createAsyncThunk(
   "filter/fetchSports",
   async () => {
@@ -18,7 +17,6 @@ export const fetchSportsFilters = createAsyncThunk(
       "https://au.testing.smartb.com.au/soc-api/sports/AllSportsAndLeagues",
     );
 
-    // Transform server response to UI model
     return response.data.map((sport: any) => ({
       id: sport.id,
       sportName: sport.sportName,
@@ -46,18 +44,33 @@ const filterSlice = createSlice({
       action: PayloadAction<{ sportId: number; tournamentId: number }>,
     ) => {
       const { sportId, tournamentId } = action.payload;
-
       const sport = state.sports.find((s) => s.id === sportId);
       if (!sport) return;
-
       const tournament = sport.tournaments.find((t) => t.id === tournamentId);
+      if (tournament) tournament.selected = !tournament.selected;
+    },
 
-      if (tournament) {
-        tournament.selected = !tournament.selected;
-      }
+    applyFilters: (state, action: PayloadAction<number[]>) => {
+      state.selectedTournamentIds = action.payload;
+
+      const allTournaments = state.sports.flatMap((sport) => sport.tournaments);
+
+      // Sync the selected names from the IDs
+      state.selectedSportsNames = action.payload
+        .map((id) => allTournaments.find((t) => t.id === id)?.name)
+        .filter(Boolean) as string[];
+
+      // Sync the selected state on each tournament to match
+      state.sports.forEach((sport) =>
+        sport.tournaments.forEach((t) => {
+          t.selected = action.payload.includes(t.id);
+        }),
+      );
     },
 
     resetSelections: (state) => {
+      state.selectedTournamentIds = [];
+      state.selectedSportsNames = [];
       state.sports.forEach((sport) =>
         sport.tournaments.forEach((t) => {
           t.selected = false;
@@ -83,7 +96,7 @@ const filterSlice = createSlice({
   },
 });
 
-export const { toggleExpand, toggleTournament, resetSelections } =
+export const { toggleExpand, toggleTournament, resetSelections, applyFilters } =
   filterSlice.actions;
 
 export default filterSlice.reducer;

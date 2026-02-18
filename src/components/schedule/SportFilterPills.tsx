@@ -1,17 +1,16 @@
-import { SPORT_FILTERS } from "@/src/constants/matchConstants";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import React from "react";
 import { ScrollView, Text, TouchableOpacity } from "react-native";
 
 type Props = {
-  selectedFilter: string;
-  onFilterChange: (filter: string) => void;
+  selectedFilters: string[];
+  onRemoveFilter: (name: string) => void;
   onOpenFilterSheet: () => void;
 };
 
 const SportFilterPills = ({
-  selectedFilter,
-  onFilterChange,
+  selectedFilters,
+  onRemoveFilter,
   onOpenFilterSheet,
 }: Props) => {
   return (
@@ -30,29 +29,18 @@ const SportFilterPills = ({
         <FontAwesome6 name="sliders" size={10} color="#4B5563" />
       </TouchableOpacity>
 
-      {/* Sport pills */}
-      {SPORT_FILTERS.map((filter) => {
-        const isActive = filter === selectedFilter;
-        return (
-          <TouchableOpacity
-            key={filter}
-            onPress={() => onFilterChange(isActive ? "" : filter)}
-            className={`flex-row items-center rounded-full px-4 py-1.5 ${
-              isActive ? "bg-blue-600" : "bg-gray-200"
-            }`}
-            style={{ gap: 4 }}
-          >
-            <Text
-              className={`text-sm font-medium ${
-                isActive ? "text-white" : "text-gray-700"
-              }`}
-            >
-              {filter}
-            </Text>
-            {isActive && <Text className="text-white text-xs">✕</Text>}
-          </TouchableOpacity>
-        );
-      })}
+      {/* Active filter pills */}
+      {selectedFilters.map((name) => (
+        <TouchableOpacity
+          key={name}
+          onPress={() => onRemoveFilter(name)}
+          className="flex-row items-center bg-blue-600 rounded-full px-4 py-1.5"
+          style={{ gap: 6 }}
+        >
+          <Text className="text-sm font-medium text-white">{name}</Text>
+          <Text className="text-white text-xs">✕</Text>
+        </TouchableOpacity>
+      ))}
     </ScrollView>
   );
 };
