@@ -26,6 +26,9 @@ export default function SportsScheduleScreen() {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("All");
   const [isLoadingMore, setIsLoadingMore] = useState(false); // 👈 new state
+  const [selectedTournamentIds, setSelectedTournamentIds] = useState<number[]>(
+    [],
+  );
 
   const isFetching = useRef(false);
 
@@ -39,23 +42,30 @@ export default function SportsScheduleScreen() {
     setPickerVisible(false);
   };
 
-  const getMatches = async (offset = 0) => {
+  const getMatches = async (
+    offset = 0,
+    tournamentIds: number[] = selectedTournamentIds,
+  ) => {
     if (isFetching.current) return;
     isFetching.current = true;
     if (offset > 0) setIsLoadingMore(true);
 
-    console.log("Fetching matches with offset:", offset);
     try {
+      const params: Record<string, any> = {
+        timezone: "Australia/Sydney",
+        status: "all",
+        limit: 10,
+        offset,
+      };
+
+      // Only add tournament_ids if some are selected
+      if (tournamentIds.length > 0) {
+        params.tournament_ids = tournamentIds.join(",");
+      }
+
       const response = await axios.get(
         `https://au.testing.smartb.com.au/soc-api/sports/matchList`,
-        {
-          params: {
-            timezone: "Australia/Sydney",
-            status: "all",
-            limit: 10,
-            offset: offset,
-          },
-        },
+        { params },
       );
 
       if (offset === 0) {
@@ -71,20 +81,19 @@ export default function SportsScheduleScreen() {
         error.data,
       );
     } finally {
-      isFetching.current = false; // ✅ Unlock after request completes
-      setIsLoadingMore(false); // ✅ Stop loading more indicator
+      isFetching.current = false;
+      setIsLoadingMore(false);
     }
   };
 
   const loadMoreMatches = () => {
     const newOffset = matches.length;
-    getMatches(newOffset);
+    getMatches(newOffset, selectedTournamentIds);
   };
 
   useEffect(() => {
-    getMatches(0);
-  }, []);
-
+    getMatches(0, selectedTournamentIds);
+  }, [selectedTournamentIds]);
   return (
     <View className="flex-1">
       <SafeAreaView className="flex-1 bg-gray-50">
@@ -131,7 +140,11 @@ export default function SportsScheduleScreen() {
       {/* Filter Bottom Sheet */}
       <FilterBottomSheet
         ref={filterSheetRef}
-        onApply={(selected: any) => console.log("Filters applied:", selected)}
+        onApply={(selectedIds: number[]) => {
+          setSelectedTournamentIds(selectedIds);
+          // Reset pagination and re-fetch with new filters
+          getMatches(0, selectedIds);
+        }}
       />
 
       {/* Month / Year Picker */}

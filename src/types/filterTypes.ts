@@ -1,22 +1,18 @@
-export type SubLeague = {
-  id: string;
+export interface Tournament {
+  id: number;
   name: string;
   selected: boolean;
-};
+}
 
-export type SportCategory = {
-  id: string;
-  name: string;
+export interface SportCategory {
+  id: number;
+  sportName: string;
   expanded: boolean;
-  selected: boolean;
-  leagues: SubLeague[];
-};
+  tournaments: Tournament[];
+}
 
-export type FilterBottomSheetRef = {
-  open: () => void;
-  close: () => void;
-};
-
-export type FilterBottomSheetProps = {
-  onApply?: (categories: SportCategory[]) => void;
-};
+export interface FilterState {
+  sports: SportCategory[];
+  loading: boolean;
+  error: string | null;
+}
