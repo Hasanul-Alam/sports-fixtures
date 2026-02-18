@@ -1,9 +1,12 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import FilterBottomSheet from "@/src/components/filter/FilterBottomSheet";
+import LoadingMore from "@/src/components/match/LoadingMore";
 import MatchCard from "@/src/components/match/MatchCard";
 import MonthYearPicker from "@/src/components/MonthYearPicker";
 import DateStrip from "@/src/components/schedule/DateStrip";
 import SportFilterPills from "@/src/components/schedule/SportFilterPills";
 import { MONTH_NAMES } from "@/src/constants/calendarConstants";
+import { appendMatches, setMatches } from "@/src/features/match/matchSlice";
 import axios from "axios";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -14,6 +17,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch, useSelector } from "react-redux";
 
 type FilterBottomSheetRef = { open: () => void; close: () => void };
 
@@ -21,9 +25,14 @@ export default function SportsScheduleScreen() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [pickerVisible, setPickerVisible] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("All");
-  const [matches, setMatches] = useState<any[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false); // 👈 new state
+
+  const isFetching = useRef(false);
+
+  const matches = useSelector((state: any) => state.match.matches);
 
   const filterSheetRef = useRef<FilterBottomSheetRef>(null);
+  const dispatch = useDispatch();
 
   const handlePickerConfirm = (month: number, year: number) => {
     setSelectedDate(new Date(year, month, 1));
@@ -31,6 +40,11 @@ export default function SportsScheduleScreen() {
   };
 
   const getMatches = async (offset = 0) => {
+    if (isFetching.current) return;
+    isFetching.current = true;
+    if (offset > 0) setIsLoadingMore(true);
+
+    console.log("Fetching matches with offset:", offset);
     try {
       const response = await axios.get(
         `https://au.testing.smartb.com.au/soc-api/sports/matchList`,
@@ -45,13 +59,9 @@ export default function SportsScheduleScreen() {
       );
 
       if (offset === 0) {
-        setMatches(response.data.matches);
-        // console.log(
-        //   "Initial matches data:",
-        //   JSON.stringify(response.data, null, 2),
-        // );
+        dispatch(setMatches(response.data.matches));
       } else {
-        setMatches((prev) => [...prev, ...response.data]);
+        dispatch(appendMatches(response.data.matches));
       }
     } catch (error: any) {
       console.error(
@@ -60,6 +70,9 @@ export default function SportsScheduleScreen() {
         error.status,
         error.data,
       );
+    } finally {
+      isFetching.current = false; // ✅ Unlock after request completes
+      setIsLoadingMore(false); // ✅ Stop loading more indicator
     }
   };
 
@@ -111,6 +124,7 @@ export default function SportsScheduleScreen() {
           showsVerticalScrollIndicator={false}
           onEndReached={loadMoreMatches}
           onEndReachedThreshold={0.5}
+          ListFooterComponent={<LoadingMore visible={isLoadingMore} />} // 👈
         />
       </SafeAreaView>
 
