@@ -2,8 +2,8 @@
 import FilterBottomSheet from "@/src/components/filter/FilterBottomSheet";
 import LoadingMore from "@/src/components/match/LoadingMore";
 import MatchCard from "@/src/components/match/MatchCard";
-import MonthYearPicker from "@/src/components/MonthYearPicker";
 import DateStrip from "@/src/components/schedule/DateStrip";
+import MonthYearPicker from "@/src/components/schedule/MonthYearPicker";
 import SportFilterPills from "@/src/components/schedule/SportFilterPills";
 import { MONTH_NAMES } from "@/src/constants/calendarConstants";
 import { appendMatches, setMatches } from "@/src/features/match/matchSlice";
@@ -52,7 +52,7 @@ export default function SportsScheduleScreen() {
           params: {
             timezone: "Australia/Sydney",
             status: "all",
-            limit: 20,
+            limit: 10,
             offset: offset,
           },
         },
@@ -124,7 +124,7 @@ export default function SportsScheduleScreen() {
           showsVerticalScrollIndicator={false}
           onEndReached={loadMoreMatches}
           onEndReachedThreshold={0.5}
-          ListFooterComponent={<LoadingMore visible={isLoadingMore} />} // 👈
+          ListFooterComponent={<LoadingMore visible={isLoadingMore} />}
         />
       </SafeAreaView>
 

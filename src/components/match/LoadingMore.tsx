@@ -20,7 +20,7 @@ const LoadingMore = ({ visible }: LoadingMoreProps) => {
   return (
     // Fixed height always reserved — no layout jump
     <View
-      style={{ height: 60, justifyContent: "center", alignItems: "center" }}
+      style={{ height: 30, justifyContent: "center", alignItems: "center" }}
     >
       <Animated.View style={{ opacity, flexDirection: "row", gap: 6 }}>
         {[0, 1, 2].map((i) => (
