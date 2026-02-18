@@ -4,10 +4,10 @@ import MonthYearPicker from "@/src/components/MonthYearPicker";
 import DateStrip from "@/src/components/schedule/DateStrip";
 import SportFilterPills from "@/src/components/schedule/SportFilterPills";
 import { MONTH_NAMES } from "@/src/constants/calendarConstants";
-import { MATCHES } from "@/src/constants/matchConstants";
-import React, { useRef, useState } from "react";
+import axios from "axios";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  ScrollView,
+  FlatList,
   StatusBar,
   Text,
   TouchableOpacity,
@@ -21,6 +21,7 @@ export default function SportsScheduleScreen() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [pickerVisible, setPickerVisible] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("All");
+  const [matches, setMatches] = useState<any[]>([]);
 
   const filterSheetRef = useRef<FilterBottomSheetRef>(null);
 
@@ -28,6 +29,48 @@ export default function SportsScheduleScreen() {
     setSelectedDate(new Date(year, month, 1));
     setPickerVisible(false);
   };
+
+  const getMatches = async (offset = 0) => {
+    try {
+      const response = await axios.get(
+        `https://au.testing.smartb.com.au/soc-api/sports/matchList`,
+        {
+          params: {
+            timezone: "Australia/Sydney",
+            status: "all",
+            limit: 20,
+            offset: offset,
+          },
+        },
+      );
+
+      if (offset === 0) {
+        setMatches(response.data.matches);
+        // console.log(
+        //   "Initial matches data:",
+        //   JSON.stringify(response.data, null, 2),
+        // );
+      } else {
+        setMatches((prev) => [...prev, ...response.data]);
+      }
+    } catch (error: any) {
+      console.error(
+        "Error fetching matches:",
+        error.url,
+        error.status,
+        error.data,
+      );
+    }
+  };
+
+  const loadMoreMatches = () => {
+    const newOffset = matches.length;
+    getMatches(newOffset);
+  };
+
+  useEffect(() => {
+    getMatches(0);
+  }, []);
 
   return (
     <View className="flex-1">
@@ -59,15 +102,16 @@ export default function SportsScheduleScreen() {
           />
         </View>
 
-        {/* Match List */}
-        <ScrollView
-          showsVerticalScrollIndicator={false}
+        {/* Match List Using Flatlist */}
+        <FlatList
+          data={matches}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <MatchCard match={item} />}
           contentContainerStyle={{ paddingTop: 4, paddingBottom: 32 }}
-        >
-          {MATCHES.map((match) => (
-            <MatchCard key={match.id} match={match} />
-          ))}
-        </ScrollView>
+          showsVerticalScrollIndicator={false}
+          onEndReached={loadMoreMatches}
+          onEndReachedThreshold={0.5}
+        />
       </SafeAreaView>
 
       {/* Filter Bottom Sheet */}

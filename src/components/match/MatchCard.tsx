@@ -1,79 +1,123 @@
-import TeamAvatar from "@/src/components/match/TeamAvatar";
-import { LEAGUE_COLORS } from "@/src/constants/matchConstants";
-import { Match } from "@/src/types/matchTypes";
 import React from "react";
 import { Text, View } from "react-native";
+import TeamAvatar from "./TeamAvatar";
 import CountdownTimer from "./coundownTimer";
 
-type Props = {
-  match: Match;
+const BASE_URL = "https://your-api-domain.com/"; // 🔥 Replace with your real API base URL
+
+type MatchProps = {
+  match: {
+    id: number;
+    start_time: string;
+    status: string;
+    display_status: string;
+    format: string;
+    competition_scope: string;
+    homeTeam: {
+      id: number;
+      name: string;
+      logo: string | null;
+    };
+    awayTeam: {
+      id: number;
+      name: string;
+      logo: string | null;
+    };
+    tournament: {
+      id: number;
+      name: string;
+    };
+    expertSportEvents: any[];
+  };
 };
 
-const MatchCard = ({ match }: Props) => {
-  const accentColor = LEAGUE_COLORS[match.league] ?? "#555";
+const MatchCard = ({ match }: MatchProps) => {
+  const isLive = match.status === "live";
+  const isUpcoming = match.status === "upcoming";
+
+  const matchDate = new Date(match.start_time);
+
+  const formattedTime = matchDate.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const formattedDate = matchDate.toLocaleDateString([], {
+    day: "2-digit",
+    month: "short",
+  });
+
+  const homeLogo = match.homeTeam?.logo
+    ? `${BASE_URL}${match.homeTeam.logo}`
+    : null;
+
+  const awayLogo = match.awayTeam?.logo
+    ? `${BASE_URL}${match.awayTeam.logo}`
+    : null;
 
   return (
-    <View className="bg-white mx-4 mb-3 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      {/* League label */}
+    <View className="bg-white mx-4 mb-3 rounded-2xl border border-gray-100 overflow-hidden">
+      {/* Tournament */}
       <View className="pt-3 pb-1 items-center">
-        <Text
-          className="text-xs font-bold tracking-widest uppercase"
-          style={{ color: accentColor }}
-        >
-          {match.league}
+        <Text className="text-xs font-bold tracking-widest uppercase text-gray-500">
+          {match.tournament?.name}
         </Text>
       </View>
 
-      {/* Kick-off time */}
+      {/* Time */}
       <Text className="text-center text-2xl font-bold text-gray-900">
-        {match.time}
+        {formattedTime}
       </Text>
 
-      {/* Live / countdown / odds / tips row */}
-      <View className="items-center mb-1" style={{ gap: 2 }}>
-        {match.isLive && match.timeLeft ? (
-          <CountdownTimer initialTime={match.timeLeft} />
-        ) : match.isLive ? (
+      <Text className="text-center text-xs text-gray-400 mb-1">
+        {formattedDate}
+      </Text>
+
+      {/* Status / Countdown / Tips */}
+      <View className="items-center mb-2" style={{ gap: 4 }}>
+        {isLive && (
           <View className="flex-row items-center gap-1">
-            <View className="w-1.5 h-1.5 rounded-full bg-green-500" />
-            <Text className="text-xs font-semibold text-gray-500">Live</Text>
+            <View className="w-2 h-2 rounded-full bg-red-500" />
+            <Text className="text-xs font-semibold text-red-500">
+              {match.display_status || "Live"}
+            </Text>
           </View>
-        ) : null}
+        )}
 
-        {match.odds ? (
-          <Text className="text-xs font-semibold text-orange-500">
-            {match.odds}
-          </Text>
-        ) : null}
+        {isUpcoming && <CountdownTimer targetDate={match.start_time} />}
 
-        {match.hasTips ? (
-          <View className="bg-blue-50 border border-blue-200 rounded px-2 py-0.5 mt-1">
-            <Text className="text-blue-600 text-xs font-semibold">Tips</Text>
+        {match.expertSportEvents?.length > 0 && (
+          <View className="bg-blue-50 border border-blue-200 rounded px-2 py-0.5">
+            <Text className="text-blue-600 text-xs font-semibold">
+              Tips Available
+            </Text>
           </View>
-        ) : null}
+        )}
       </View>
 
       {/* Teams */}
       <View className="flex-row items-center justify-between px-6 pb-4 pt-2">
+        {/* Home Team */}
         <View className="items-center flex-1">
-          <TeamAvatar name={match.homeTeam} />
+          <TeamAvatar name={match.homeTeam?.name} logo={homeLogo} />
           <Text
             className="text-xs text-center text-gray-700 font-medium mt-2 leading-4"
             numberOfLines={2}
           >
-            {match.homeTeam}
+            {match.homeTeam?.name}
           </Text>
         </View>
 
         <Text className="text-gray-300 text-lg px-2">vs</Text>
 
+        {/* Away Team */}
         <View className="items-center flex-1">
-          <TeamAvatar name={match.awayTeam} />
+          <TeamAvatar name={match.awayTeam?.name} logo={awayLogo} />
           <Text
             className="text-xs text-center text-gray-700 font-medium mt-2 leading-4"
             numberOfLines={2}
           >
-            {match.awayTeam}
+            {match.awayTeam?.name}
           </Text>
         </View>
       </View>
